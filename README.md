@@ -172,35 +172,67 @@ http://localhost:3000
 
 ## Start Ollama
 
+```bash
 brew services start ollama
-
----
+```
 
 ## Activate Python Environment
 
+```bash
 source .venv/bin/activate
-
----
+```
 
 ## Run Healthcheck
 
+```bash
 PYTHONPATH=src python -m ba_copilot.main healthcheck
+```
 
----
+## List Available Personas and Prompts
 
-## Generate Outputs
+```bash
+PYTHONPATH=src python -m ba_copilot.main list
+```
+
+## Run A Persona + Prompt Workflow
+
+```bash
+PYTHONPATH=src python -m ba_copilot.main run \
+  --persona senior-business-analyst \
+  --prompt requirements \
+  --input examples/notes.md \
+  --output outputs/requirements.md
+```
+
+Example using another perspective:
+
+```bash
+PYTHONPATH=src python -m ba_copilot.main run \
+  --persona risk-compliance-advisor \
+  --prompt raid-log \
+  --input examples/notes.md \
+  --output outputs/risk-raid.md
+```
+
+## Generate Outputs Using Legacy Commands
 
 ### Executive Summary
 
+```bash
 PYTHONPATH=src python -m ba_copilot.main summarize examples/notes.md --output outputs/summary.md
+```
 
 ### Requirements
 
+```bash
 PYTHONPATH=src python -m ba_copilot.main requirements examples/notes.md --output outputs/requirements.md
+```
 
 ### RAID Log
 
+```bash
 PYTHONPATH=src python -m ba_copilot.main raid examples/notes.md --output outputs/raid.md
+```
 
 ---
 
