@@ -1,6 +1,6 @@
 import argparse
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 from ba_copilot.llm import ask_ollama
 
@@ -12,13 +12,11 @@ LEGACY_PROMPTS = {
     "raid": "Create a RAID log table with Type, Description, Impact, Owner, and Mitigation.",
 }
 
-
 PROJECT_ROOT = Path.cwd()
 PERSONAS_DIR = PROJECT_ROOT / "personas"
 PROMPTS_DIR = PROJECT_ROOT / "prompts"
 WORKSPACES_DIR = PROJECT_ROOT / "workspaces"
 WORKSPACE_TEMPLATE_DIR = WORKSPACES_DIR / "_template"
-
 MAX_WORKSPACE_CONTEXT_CHARS = 12000
 
 
@@ -39,10 +37,7 @@ def resolve_named_file(directory: Path, name: str) -> Path:
 
     available = sorted(p.stem for p in directory.glob("*.md"))
     available_text = "\n".join(f"- {item}" for item in available) or "No files found."
-
-    raise SystemExit(
-        f"Could not find '{name}' in {directory}\n\nAvailable options:\n{available_text}"
-    )
+    raise SystemExit(f"Could not find '{name}' in {directory}\n\nAvailable options:\n{available_text}")
 
 
 def resolve_workspace(workspace: str | None) -> Path | None:
@@ -50,7 +45,6 @@ def resolve_workspace(workspace: str | None) -> Path | None:
         return None
 
     workspace_path = WORKSPACES_DIR / workspace
-
     if not workspace_path.exists():
         raise SystemExit(
             f"Workspace not found: {workspace_path}\n"
@@ -78,14 +72,10 @@ def resolve_input_path(input_file: str, workspace_path: Path | None) -> Path:
     return input_path
 
 
-def resolve_output_path(
-    output: str | None,
-    workspace_path: Path | None,
-    prompt_name: str | None = None,
-) -> Path | None:
+def resolve_output_path(output: str | None, workspace_path: Path | None, default_name: str | None = None) -> Path | None:
     if not output:
-        if workspace_path and prompt_name:
-            return workspace_path / "outputs" / f"{prompt_name}.md"
+        if workspace_path and default_name:
+            return workspace_path / "outputs" / f"{default_name}.md"
         return None
 
     output_path = Path(output)
@@ -122,19 +112,15 @@ def load_workspace_context(workspace_path: Path | None) -> str:
 
     for folder_name in ["knowledge", "decisions"]:
         folder = workspace_path / folder_name
-
         if not folder.exists():
             continue
 
         for file_path in sorted(folder.glob("*.md")):
             content = file_path.read_text(encoding="utf-8").strip()
-
             if not content:
                 continue
 
-            context_sections.append(
-                f"## {folder_name}/{file_path.name}\n\n{content}"
-            )
+            context_sections.append(f"## {folder_name}/{file_path.name}\n\n{content}")
 
     combined_context = "\n\n---\n\n".join(context_sections)
 
@@ -155,19 +141,11 @@ def write_or_print_output(result: str, output_path: Path | None) -> None:
 
 
 def run_healthcheck(model: str) -> None:
-    result = ask_ollama(
-        "Reply with only: Ollama connection OK",
-        model=model,
-    )
+    result = ask_ollama("Reply with only: Ollama connection OK", model=model)
     print(result)
 
 
-def run_legacy_mode(
-    mode: str,
-    input_file: str,
-    output: str | None,
-    model: str,
-) -> None:
+def run_legacy_mode(mode: str, input_file: str, output: str | None, model: str) -> None:
     notes = read_text_file(Path(input_file))
 
     prompt = f"""
@@ -178,11 +156,7 @@ Input notes:
 """
 
     result = ask_ollama(prompt, model=model)
-
-    write_or_print_output(
-        result,
-        Path(output) if output else None,
-    )
+    write_or_print_output(result, Path(output) if output else None)
 
 
 def run_workflow(
@@ -234,11 +208,65 @@ Analyse only the provided notes.
 Do not invent unsupported facts.
 """
 
-    result = ask_ollama(
-        combined_prompt,
-        model=selected_model,
-    )
+    result = ask_ollama(combined_prompt, model=selected_model)
+    write_or_print_output(result, output_path)
 
+
+def run_review(
+    reviewer: str,
+    input_file: str,
+    output: str | None,
+    model: str | None,
+    workspace: str | None,
+) -> None:
+    workspace_path = resolve_workspace(workspace)
+
+    reviewer_path = resolve_named_file(PERSONAS_DIR, reviewer)
+    input_path = resolve_input_path(input_file, workspace_path)
+    output_path = resolve_output_path(output, workspace_path, "review")
+
+    reviewer_text = read_text_file(reviewer_path)
+    document_text = read_text_file(input_path)
+    workspace_context = load_workspace_context(workspace_path)
+
+    selected_model = model or reviewer
+
+    combined_prompt = f"""
+You must review the document below from the perspective of the reviewer persona.
+
+# Reviewer Persona
+
+{reviewer_text}
+
+# Workspace Context
+
+{workspace_context or "No additional workspace context provided."}
+
+# Document To Review
+
+{document_text}
+
+# Review Instructions
+
+Review the document. Do not rewrite it fully.
+
+Produce:
+1. Overall Assessment
+2. Strengths
+3. Weaknesses
+4. Missing Risks or Assumptions
+5. Gaps or Ambiguities
+6. Recommended Improvements
+7. Specific Suggested Edits
+
+Rules:
+- Be constructive and specific.
+- Do not invent unsupported facts.
+- Clearly label assumptions.
+- Focus on improving quality, clarity, usefulness, and risk awareness.
+"""
+
+    result = ask_ollama(combined_prompt, model=selected_model)
     write_or_print_output(result, output_path)
 
 
@@ -252,16 +280,11 @@ def list_assets() -> None:
         print(f"- {path.stem}")
 
     print("\nWorkspaces:")
-
     if not WORKSPACES_DIR.exists():
         print("- No workspaces directory found.")
         return
 
-    workspaces = [
-        p for p in sorted(WORKSPACES_DIR.iterdir())
-        if p.is_dir() and p.name != "_template"
-    ]
-
+    workspaces = [p for p in sorted(WORKSPACES_DIR.iterdir()) if p.is_dir() and p.name != "_template"]
     if not workspaces:
         print("- No project workspaces found.")
     else:
@@ -278,17 +301,8 @@ def create_workspace(name: str) -> None:
     if WORKSPACE_TEMPLATE_DIR.exists():
         shutil.copytree(WORKSPACE_TEMPLATE_DIR, workspace_path)
     else:
-        for subdir in [
-            "notes",
-            "outputs",
-            "knowledge",
-            "decisions",
-            "prompts",
-        ]:
-            (workspace_path / subdir).mkdir(
-                parents=True,
-                exist_ok=True,
-            )
+        for subdir in ["notes", "outputs", "knowledge", "decisions", "prompts"]:
+            (workspace_path / subdir).mkdir(parents=True, exist_ok=True)
 
         (workspace_path / "README.md").write_text(
             f"# {name}\n\nProject workspace.\n",
@@ -299,93 +313,39 @@ def create_workspace(name: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Local business analysis copilot"
-    )
-
+    parser = argparse.ArgumentParser(description="Local business analysis copilot")
     subparsers = parser.add_subparsers(dest="command")
 
-    healthcheck_parser = subparsers.add_parser(
-        "healthcheck",
-        help="Check Ollama connectivity",
-    )
+    healthcheck_parser = subparsers.add_parser("healthcheck", help="Check Ollama connectivity")
+    healthcheck_parser.add_argument("--model", default="llama3.2:3b")
 
-    healthcheck_parser.add_argument(
-        "--model",
-        default="llama3.2:3b",
-    )
+    subparsers.add_parser("list", help="List personas, prompts, and workspaces")
 
-    subparsers.add_parser(
-        "list",
-        help="List personas, prompts, and workspaces",
-    )
-
-    workspace_parser = subparsers.add_parser(
-        "workspace",
-        help="Manage workspaces",
-    )
-
-    workspace_subparsers = workspace_parser.add_subparsers(
-        dest="workspace_command"
-    )
-
-    workspace_create_parser = workspace_subparsers.add_parser(
-        "create",
-        help="Create workspace",
-    )
-
+    workspace_parser = subparsers.add_parser("workspace", help="Manage workspaces")
+    workspace_subparsers = workspace_parser.add_subparsers(dest="workspace_command")
+    workspace_create_parser = workspace_subparsers.add_parser("create", help="Create workspace")
     workspace_create_parser.add_argument("name")
 
-    run_parser = subparsers.add_parser(
-        "run",
-        help="Run persona + prompt workflow",
-    )
+    run_parser = subparsers.add_parser("run", help="Run persona + prompt workflow")
+    run_parser.add_argument("--workspace", help="Workspace name under workspaces/")
+    run_parser.add_argument("--persona", required=True)
+    run_parser.add_argument("--prompt", required=True)
+    run_parser.add_argument("--input", required=True)
+    run_parser.add_argument("--output", "-o")
+    run_parser.add_argument("--model", default=None, help="Optional model override.")
 
-    run_parser.add_argument(
-        "--workspace",
-        help="Workspace name under workspaces/",
-    )
-
-    run_parser.add_argument(
-        "--persona",
-        required=True,
-    )
-
-    run_parser.add_argument(
-        "--prompt",
-        required=True,
-    )
-
-    run_parser.add_argument(
-        "--input",
-        required=True,
-    )
-
-    run_parser.add_argument(
-        "--output",
-        "-o",
-    )
-
-    run_parser.add_argument(
-        "--model",
-        default=None,
-        help="Optional model override.",
-    )
+    review_parser = subparsers.add_parser("review", help="Review an existing output using a reviewer persona")
+    review_parser.add_argument("--workspace", help="Workspace name under workspaces/")
+    review_parser.add_argument("--reviewer", required=True)
+    review_parser.add_argument("--input", required=True)
+    review_parser.add_argument("--output", "-o")
+    review_parser.add_argument("--model", default=None, help="Optional model override.")
 
     for legacy_mode in LEGACY_PROMPTS:
         legacy_parser = subparsers.add_parser(legacy_mode)
-
         legacy_parser.add_argument("file")
-
-        legacy_parser.add_argument(
-            "--output",
-            "-o",
-        )
-
-        legacy_parser.add_argument(
-            "--model",
-            default="llama3.2:3b",
-        )
+        legacy_parser.add_argument("--output", "-o")
+        legacy_parser.add_argument("--model", default="llama3.2:3b")
 
     args = parser.parse_args()
 
@@ -401,7 +361,6 @@ def main() -> None:
         if args.workspace_command == "create":
             create_workspace(args.name)
             return
-
         workspace_parser.print_help()
         return
 
@@ -409,6 +368,16 @@ def main() -> None:
         run_workflow(
             persona=args.persona,
             prompt_name=args.prompt,
+            input_file=args.input,
+            output=args.output,
+            model=args.model,
+            workspace=args.workspace,
+        )
+        return
+
+    if args.command == "review":
+        run_review(
+            reviewer=args.reviewer,
             input_file=args.input,
             output=args.output,
             model=args.model,
