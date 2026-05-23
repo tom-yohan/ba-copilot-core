@@ -36,19 +36,33 @@ BA Prompts / Personas / Templates
 
 The repository is organised around reusable BA tooling, prompts, templates, and examples.
 
-| Folder | Purpose |
-|---|---|
-| `src/` | Python tooling and CLI scripts. |
-| `prompts/` | Reusable task prompts, such as requirements extraction, RAID logs, and executive summaries. |
-| `personas/` | System prompts and assistant personas for Open WebUI. |
-| `templates/` | Reusable BA document structures and delivery templates. |
-| `docs/` | Internal documentation, setup notes, and workflow guidance. |
-| `examples/` | Sanitised example inputs for testing prompts and tooling. |
-| `outputs/` | Generated outputs. This folder should usually remain uncommitted. |
-| `workspaces/` | Optional project or client-specific workspaces. |
+    ba-copilot-core/
+    │
+    ├── src/
+    │   └── Python tooling and CLI scripts
+    │
+    ├── prompts/
+    │   └── Reusable task prompts
+    │
+    ├── personas/
+    │   └── System prompts and assistant personas
+    │
+    ├── templates/
+    │   └── BA document templates
+    │
+    ├── docs/
+    │   └── Internal documentation and setup notes
+    │
+    ├── examples/
+    │   └── Sanitised example inputs
+    │
+    ├── outputs/
+    │   └── Generated outputs, not committed
+    │
+    └── workspaces/
+        └── Optional project or client workspaces
 
 ---
-
 # Features
 
 ## Current
