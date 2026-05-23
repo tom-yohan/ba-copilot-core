@@ -10,7 +10,7 @@ MODELFILES_DIR = Path("modelfiles")
 def slugify(filename: str) -> str:
     name = filename.replace(".md", "")
     name = re.sub(r"[^a-zA-Z0-9-]+", "-", name)
-    return f"persona-{name.lower()}"
+    return name.lower()
 
 
 def main() -> None:
@@ -42,6 +42,7 @@ SYSTEM """
         )
 
         print(f"Creating Ollama model: {model_name}")
+
         subprocess.run(
             ["ollama", "create", model_name, "-f", str(modelfile)],
             check=True,
