@@ -8,6 +8,11 @@ from ba_copilot.prompts import (
     build_revise_prompt,
     build_workflow_prompt,
 )
+from ba_copilot.prompts import (
+    build_review_prompt,
+    build_revise_prompt,
+    build_workflow_prompt,
+)
 
 
 LEGACY_PROMPTS = {
