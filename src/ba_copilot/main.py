@@ -3,6 +3,11 @@ import shutil
 from pathlib import Path
 
 from ba_copilot.llm import ask_ollama
+from ba_copilot.prompts import (
+    build_review_prompt,
+    build_revise_prompt,
+    build_workflow_prompt,
+)
 
 
 LEGACY_PROMPTS = {
