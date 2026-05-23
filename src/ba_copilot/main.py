@@ -19,6 +19,8 @@ PROMPTS_DIR = PROJECT_ROOT / "prompts"
 WORKSPACES_DIR = PROJECT_ROOT / "workspaces"
 WORKSPACE_TEMPLATE_DIR = WORKSPACES_DIR / "_template"
 
+MAX_WORKSPACE_CONTEXT_CHARS = 12000
+
 
 def read_text_file(path: Path) -> str:
     if not path.exists():
@@ -112,6 +114,37 @@ def resolve_prompt_path(prompt_name: str, workspace_path: Path | None) -> Path:
     return resolve_named_file(PROMPTS_DIR, prompt_name)
 
 
+def load_workspace_context(workspace_path: Path | None) -> str:
+    if not workspace_path:
+        return ""
+
+    context_sections = []
+
+    for folder_name in ["knowledge", "decisions"]:
+        folder = workspace_path / folder_name
+
+        if not folder.exists():
+            continue
+
+        for file_path in sorted(folder.glob("*.md")):
+            content = file_path.read_text(encoding="utf-8").strip()
+
+            if not content:
+                continue
+
+            context_sections.append(
+                f"## {folder_name}/{file_path.name}\n\n{content}"
+            )
+
+    combined_context = "\n\n---\n\n".join(context_sections)
+
+    if len(combined_context) > MAX_WORKSPACE_CONTEXT_CHARS:
+        combined_context = combined_context[:MAX_WORKSPACE_CONTEXT_CHARS]
+        combined_context += "\n\n[Workspace context truncated due to size limit.]"
+
+    return combined_context
+
+
 def write_or_print_output(result: str, output_path: Path | None) -> None:
     if output_path:
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -170,6 +203,7 @@ def run_workflow(
     persona_text = read_text_file(persona_path)
     prompt_text = read_text_file(prompt_path)
     notes_text = read_text_file(input_path)
+    workspace_context = load_workspace_context(workspace_path)
 
     selected_model = model or persona
 
@@ -183,6 +217,10 @@ You must follow the persona and workflow instructions below.
 # Workflow Prompt
 
 {prompt_text}
+
+# Workspace Context
+
+{workspace_context or "No additional workspace context provided."}
 
 # Input Notes
 
