@@ -1,0 +1,10 @@
+pyproject.toml
+src/ba_copilot/__init__.py
+src/ba_copilot/llm.py
+src/ba_copilot/main.py
+src/ba_copilot_local.egg-info/PKG-INFO
+src/ba_copilot_local.egg-info/SOURCES.txt
+src/ba_copilot_local.egg-info/dependency_links.txt
+src/ba_copilot_local.egg-info/entry_points.txt
+src/ba_copilot_local.egg-info/requires.txt
+src/ba_copilot_local.egg-info/top_level.txt

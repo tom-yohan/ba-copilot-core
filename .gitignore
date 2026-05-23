@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Outputs
+outputs/
+notes/
+knowledge/
+
+# macOS
+.DS_Store
+
+# Secrets
+.env
+
+# Sensitive docs
+*.pdf
+*.docx
+*.xlsx
+*.pptx
+
+# Ollama/OpenWebUI
+open-webui-data/
