@@ -269,6 +269,85 @@ Rules:
     result = ask_ollama(combined_prompt, model=selected_model)
     write_or_print_output(result, output_path)
 
+def run_revise(
+    reviser: str,
+    original_file: str,
+    review_file: str,
+    output: str | None,
+    model: str | None,
+    workspace: str | None,
+) -> None:
+    workspace_path = resolve_workspace(workspace)
+
+    reviser_path = resolve_named_file(PERSONAS_DIR, reviser)
+
+    original_path = resolve_input_path(
+        original_file,
+        workspace_path,
+    )
+
+    review_path = resolve_input_path(
+        review_file,
+        workspace_path,
+    )
+
+    output_path = resolve_output_path(
+        output,
+        workspace_path,
+        "revised",
+    )
+
+    reviser_text = read_text_file(reviser_path)
+    original_text = read_text_file(original_path)
+    review_text = read_text_file(review_path)
+
+    workspace_context = load_workspace_context(
+        workspace_path,
+    )
+
+    selected_model = model or reviser
+
+    combined_prompt = f"""
+You must revise the original document using the review feedback and the reviser persona.
+
+# Reviser Persona
+
+{reviser_text}
+
+# Workspace Context
+
+{workspace_context or "No additional workspace context provided."}
+
+# Original Document
+
+{original_text}
+
+# Review Feedback
+
+{review_text}
+
+# Revision Instructions
+
+Produce a revised version of the original document.
+
+Rules:
+- Preserve useful content from the original.
+- Apply the review feedback where it improves quality.
+- Do not invent unsupported facts.
+- Clearly label assumptions.
+- Improve structure, clarity, specificity, and actionability.
+- Output only the revised document.
+"""
+
+    result = ask_ollama(
+        combined_prompt,
+        model=selected_model,
+    )
+
+    write_or_print_output(
+        result,
+        output_path,
+    )
 
 def list_assets() -> None:
     print("\nPersonas:")
@@ -341,6 +420,42 @@ def main() -> None:
     review_parser.add_argument("--output", "-o")
     review_parser.add_argument("--model", default=None, help="Optional model override.")
 
+    revise_parser: argparse.ArgumentParser = subparsers.add_parser(
+        "revise",
+        help="Revise an output using review feedback",
+    )
+
+    revise_parser.add_argument(
+        "--workspace",
+        help="Workspace name under workspaces/",
+    )
+
+    revise_parser.add_argument(
+        "--reviser",
+        required=True,
+    )
+
+    revise_parser.add_argument(
+        "--original",
+        required=True,
+    )
+
+    revise_parser.add_argument(
+        "--review",
+        required=True,
+    )
+
+    revise_parser.add_argument(
+        "--output",
+        "-o",
+    )
+
+    revise_parser.add_argument(
+        "--model",
+        default=None,
+        help="Optional model override.",
+    )
+    
     for legacy_mode in LEGACY_PROMPTS:
         legacy_parser = subparsers.add_parser(legacy_mode)
         legacy_parser.add_argument("file")
@@ -385,6 +500,17 @@ def main() -> None:
         )
         return
 
+    if args.command == "revise":
+        run_revise(
+            reviser=args.reviser,
+            original_file=args.original,
+            review_file=args.review,
+            output=args.output,
+            model=args.model,
+            workspace=args.workspace,
+        )
+        return
+    
     if args.command in LEGACY_PROMPTS:
         run_legacy_mode(
             mode=args.command,
